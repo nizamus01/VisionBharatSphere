@@ -1,0 +1,28 @@
+version: '3.8'
+services:
+  backend:
+    build: .
+    ports:
+      - '8000:8000'
+    environment:
+      - VBS_SECRET=${VBS_SECRET:-changeme123}
+      - VBS_DB=${VBS_DB:-sqlite:///./vbs.db}
+      - DATABASE_URL=${DATABASE_URL:-}
+    volumes:
+      - ./app:/app/app:ro
+      - ./vbs.db:/app/vbs.db
+    depends_on: []
+
+  # Optional postgres service for production-like local testing. Uncomment to use it and set DATABASE_URL.
+  # postgres:
+  #   image: postgres:15
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: vbs
+  #     POSTGRES_PASSWORD: vbs_pass
+  #     POSTGRES_DB: vbs
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata: {}
