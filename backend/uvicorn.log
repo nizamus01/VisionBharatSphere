@@ -1,0 +1,11 @@
+nohup: ignoring input
+INFO:     Started server process [29686]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     152.59.150.5:0 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45738 - "POST /auth/register HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50514 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60596 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54678 - "POST /tests HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:39868 - "GET /tests HTTP/1.1" 307 Temporary Redirect

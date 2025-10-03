@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Ishihara 24-Plate Fast Test — VisionBharatSphere</title>
+  <style>
+    :root{--bg:#0b0f1a;--card:#fff;--accent:#10b981;--muted:#6b7280}
+    body{margin:0;font-family:Inter,system-ui,Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#021025 0%,#051426 100%);color:#0b1220;display:flex;min-height:100vh;align-items:center;justify-content:center}
+    .app{width:980px;max-width:96%;background:linear-gradient(180deg,#ffffff 0%,#f7fbff 100%);border-radius:12px;box-shadow:0 10px 30px rgba(2,6,23,.5);overflow:hidden}
+    header{padding:18px 24px;border-bottom:1px solid #eef3fb;display:flex;align-items:center;justify-content:space-between}
+    header h1{font-size:18px;margin:0;color:#07366b}
+    .content{display:grid;grid-template-columns:420px 1fr;gap:20px;padding:20px}
+    .left{display:flex;flex-direction:column;gap:12px}
+    .plate{width:420px;height:420px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;border:6px solid #f1f5f9}
+    .plate img{width:100%;height:100%;object-fit:contain}
+    .controls{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{background:#0b61c8;color:#fff;border:none;padding:10px 14px;border-radius:8px;cursor:pointer;font-weight:600}
+    .btn.ghost{background:transparent;color:#0b4aa6;border:1px solid #dbeafe}
+    .btn.warn{background:#f59e0b}
+    .stats{background:#fff;padding:12px;border-radius:8px;border:1px solid #eef3fb}
+    .options{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+    .opt{width:110px;height:56px;border-radius:8px;border:1px solid #e6eefb;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-weight:700}
+    .opt.selected{background:var(--accent);color:#fff;border-color:rgba(16,185,129,.9)}
+    .progress{height:10px;background:#eef3fb;border-radius:999px;overflow:hidden}
+    .progress > i{display:block;height:100%;background:linear-gradient(90deg,#ff9933,#10b981);width:0%}
+    .footer{padding:14px 20px;border-top:1px solid #eef3fb;background:linear-gradient(180deg,#f8fbff,transparent)}
+    .center{display:flex;align-items:center;justify-content:center}
+    .kbd{display:inline-block;background:#f1f5f9;padding:4px 8px;border-radius:6px;border:1px solid #e6eefb;margin-left:6px}
+    .loader{width:40px;height:40px;border-radius:50%;border:4px solid #e6eefb;border-top-color:var(--accent);animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @media (max-width:900px){.content{grid-template-columns:1fr;}.plate{width:320px;height:320px}}
+  </style>
+</head>
+    /* toast notifications */
+    .toast{position:fixed;right:20px;bottom:20px;background:rgba(11,97,200,0.95);color:#fff;padding:10px 14px;border-radius:8px;box-shadow:0 8px 24px rgba(2,6,23,0.4);opacity:0;transform:translateY(12px);transition:all .25s ease;z-index:99999}
+    .toast.show{opacity:1;transform:translateY(0)}
+    .toast.error{background:crimson}
+<body>
+  <div class="app" role="application" aria-labelledby="title">
+    <header>
+      <h1 id="title">Ishihara 24-Plate Fast Test — VisionBharatSphere</h1>
+      <div style="display:flex;gap:12px;align-items:center">
+        <div style="color:#0b4aa6;font-weight:600">Keyboard: <span class="kbd">1-4</span> to answer</div>
+        <div id="authArea" style="display:flex;gap:8px;align-items:center">
+          <div id="userBadge" style="display:none;color:#064e3b;font-weight:700"></div>
+          <button class="btn ghost" id="loginBtn">Login</button>
+          <button class="btn" id="registerBtn">Register</button>
+          <button class="btn" id="logoutBtn" style="display:none">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="left">
+        <div class="plate" id="plateContainer" aria-live="polite">
+          <div class="center" id="loadingHolder">
+            <div style="text-align:center">
+              <div class="loader" aria-hidden="true"></div>
+              <div style="margin-top:12px;color:#475569;font-weight:600">Loading plates...</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button class="btn" id="startBtn">🎨 Start Test</button>
+          <button class="btn ghost" id="nextBtn" style="display:none">➡️ Next</button>
+          <button class="btn ghost" id="finishBtn" style="display:none">✅ Finish</button>
+          <button class="btn" id="retakeBtn" style="display:none">🔄 Retake</button>
+        </div>
+
+        <div class="stats" style="margin-top:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div><strong>Plate <span id="currentPlate">0</span> / 24</strong></div>
+            <div style="color:var(--muted)" id="diagnosticHint">Select the number you see</div>
+          </div>
+
+          <div style="margin-top:10px">
+            <div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
+          </div>
+
+          <div class="options" id="optionsHolder" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+      <div>
+        <div style="display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div>
+            <div style="font-weight:800;color:#07366b;font-size:18px">Instructions</div>
+            <div style="color:#475569;margin-top:6px">Look at the plate and choose the number or option that you see. Use keyboard 1-4 for quick answers. Press <strong>Next</strong> to continue.</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:700">Fast Mode</div>
+            <div style="color:#475569;font-size:13px">Preloaded plates for instant navigation</div>
+          </div>
+        </div>
+
+        <div style="background:#fff;padding:14px;border-radius:8px;border:1px solid #eef3fb">
+          <h3 style="margin-top:0;color:#0b4aa6">Your Answers</h3>
+          <div id="answersList" style="min-height:220px;max-height:560px;overflow:auto;padding-right:8px"></div>
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="btn ghost" id="downloadBtn" style="flex:1;display:none">📄 Download Report</button>
+          <button class="btn" id="shareBtn" style="flex:1;display:none">🔗 Share Result</button>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="footer">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="color:#475569">Built for VisionBharatSphere • Local fast Ishihara test demo</div>
+        <div style="color:#0b4aa6;font-weight:700">Accuracy hints shown after finish</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- toast -->
+  <div id="toast" class="toast" role="status" aria-live="polite" style="display:none"></div>
+
+  <!-- Auth modals -->
+  <div id="authModals" aria-hidden="true">
+    <div id="loginModal" style="display:none;position:fixed;inset:0;background:rgba(2,6,23,0.5);align-items:center;justify-content:center;z-index:9999">
+      <div style="background:#fff;padding:18px;border-radius:10px;max-width:420px;margin:0 auto">
+        <h3 style="margin-top:0;color:#07366b">Login</h3>
+        <form id="loginForm">
+          <div style="margin-bottom:8px"><label style="display:block;font-weight:600">Email</label><input id="loginEmail" type="email" required style="width:100%;padding:8px;border:1px solid #e6eefb;border-radius:8px"></div>
+          <div style="margin-bottom:8px"><label style="display:block;font-weight:600">Password</label><input id="loginPassword" type="password" required style="width:100%;padding:8px;border:1px solid #e6eefb;border-radius:8px"></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+            <button type="button" class="btn ghost" onclick="hideLogin()">Cancel</button>
+            <button type="submit" class="btn">Login</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="registerModal" style="display:none;position:fixed;inset:0;background:rgba(2,6,23,0.5);align-items:center;justify-content:center;z-index:9999">
+      <div style="background:#fff;padding:18px;border-radius:10px;max-width:480px;margin:0 auto">
+        <h3 style="margin-top:0;color:#07366b">Register</h3>
+        <form id="registerForm">
+          <div style="margin-bottom:8px"><label style="display:block;font-weight:600">Full name</label><input id="regName" type="text" required style="width:100%;padding:8px;border:1px solid #e6eefb;border-radius:8px"></div>
+          <div style="margin-bottom:8px"><label style="display:block;font-weight:600">Email</label><input id="regEmail" type="email" required style="width:100%;padding:8px;border:1px solid #e6eefb;border-radius:8px"></div>
+          <div style="margin-bottom:8px"><label style="display:block;font-weight:600">Password</label><input id="regPassword" type="password" required style="width:100%;padding:8px;border:1px solid #e6eefb;border-radius:8px"></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+            <button type="button" class="btn ghost" onclick="hideRegister()">Cancel</button>
+            <button type="submit" class="btn">Create account</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Plate list provided by user (24 plates)
+    const plates = [
+      {src:"https://i.ibb.co/gZBVZbt3/Screenshot-2025-09-27-195645.png",correct:"12"},
+      {src:"https://i.ibb.co/gb6VbLFP/Screenshot-2025-09-27-222858.png",correct:"8"},
+      {src:"https://i.ibb.co/hFL0Y2h8/Screenshot-2025-09-28-012612.png",correct:"29"},
+      {src:"https://i.ibb.co/9mw8gVYc/Screenshot-2025-09-28-014304.png",correct:"5"},
+      {src:"https://i.ibb.co/JRZcfNPM/Screenshot-2025-09-28-021814.png",correct:"3"},
+      {src:"https://i.ibb.co/VYdYt5rB/Screenshot-2025-09-28-022034.png",correct:"15"},
+      {src:"https://i.ibb.co/xKm8JCRb/Screenshot-2025-09-28-022316.png",correct:"74"},
+      {src:"https://i.ibb.co/7JtxZPB0/Screenshot-2025-09-28-022511.png",correct:"6"},
+      {src:"https://i.ibb.co/PzZWRkY4/Screenshot-2025-09-28-022721.png",correct:"45"},
+      {src:"https://i.ibb.co/nFhgKt8/Screenshot-2025-09-28-022858.png",correct:"5"},
+      {src:"https://i.ibb.co/1G93PJN5/Screenshot-2025-09-28-023156.png",correct:"7"},
+      {src:"https://i.ibb.co/dsc4PJFX/Screenshot-2025-09-28-024011.png",correct:"16"},
+      {src:"https://i.ibb.co/G3987H2c/Screenshot-2025-09-28-024327.png",correct:"73"},
+      {src:"https://i.ibb.co/TMXxssHB/Screenshot-2025-09-28-024710.png",correct:""},
+      {src:"https://i.ibb.co/pBs69vtJ/Screenshot-2025-09-28-024947.png",correct:""},
+      {src:"https://i.ibb.co/mC2GDVKh/Screenshot-2025-09-28-025208.png",correct:"26"},
+      {src:"https://i.ibb.co/TqR54D9j/Screenshot-2025-09-28-025403.png",correct:"42"},
+      {src:"https://i.ibb.co/LDPsy1WX/Screenshot-2025-09-28-025555.png",correct:""},
+      {src:"https://i.ibb.co/XfJKbgw8/Screenshot-2025-09-28-025745.png",correct:""},
+      {src:"https://i.ibb.co/4nRHvfdH/Screenshot-2025-09-28-025937.png",correct:""},
+      {src:"https://i.ibb.co/QjC2zPgr/Screenshot-2025-09-28-030118.png",correct:""},
+      {src:"https://i.ibb.co/Pvgck9CX/Screenshot-2025-09-28-030243.png",correct:""},
+      {src:"https://i.ibb.co/HT4prLpy/Screenshot-2025-09-28-030450.png",correct:""},
+      {src:"https://i.ibb.co/fGDtSp9x/Screenshot-2025-09-28-030605.png",correct:""}
+    ];
+
+    // App state
+    let current = 0; // 0-based index
+    let answers = new Array(24).fill(null);
+    const plateContainer = document.getElementById('plateContainer');
+    const loadingHolder = document.getElementById('loadingHolder');
+    const optionsHolder = document.getElementById('optionsHolder');
+    const currentPlateSpan = document.getElementById('currentPlate');
+    const progressBar = document.getElementById('progressBar');
+    const startBtn = document.getElementById('startBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const finishBtn = document.getElementById('finishBtn');
+    const retakeBtn = document.getElementById('retakeBtn');
+    const answersList = document.getElementById('answersList');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const shareBtn = document.getElementById('shareBtn');
+  const loginBtn = document.getElementById('loginBtn');
+  const registerBtn = document.getElementById('registerBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const userBadge = document.getElementById('userBadge');
+
+    // Preload images
+    let loadedCount = 0;
+    const imageCache = [];
+
+    function preloadAll() {
+      return new Promise((resolve) => {
+        if(!plates || plates.length===0) return resolve();
+        plates.forEach((p, idx) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.src = p.src;
+          img.onload = () => { loadedCount++; imageCache[idx]=img; checkAll(); };
+          img.onerror = () => { loadedCount++; imageCache[idx]=null; checkAll(); };
+        });
+        function checkAll(){
+          const holder = loadingHolder.querySelector('div > div:nth-child(2)');
+          if(holder){ holder.textContent = `Loading plates... (${loadedCount}/24)` }
+          if(loadedCount >= plates.length) resolve();
+        }
+      });
+    }
+
+    // Build options for a plate (4 options or "Nothing" when empty)
+    function buildOptionsFor(index){
+      const p = plates[index];
+      // We try to create up to 4 distinct visible options. If plate.correct empty, use common anomaly choices
+      const options = p.correct && p.correct !== "" ? [p.correct] : [];
+      // Fill with plausible distractors
+      const distractors = ['1','2','3','4','5','6','7','8','9','12','13','15','16','17','26','29','42','45','70','71','73','74','78'];
+      let i=0;
+      while(options.length < 3 && i < distractors.length){ if(!options.includes(distractors[i])) options.push(distractors[i]); i++; }
+      // Add special "Nothing" option
+      options.push('Nothing');
+      // Shuffle
+      for(let s=options.length-1;s>0;s--){ const j=Math.floor(Math.random()*(s+1)); [options[s],options[j]]=[options[j],options[s]]; }
+      return options.slice(0,4);
+    }
+
+    // Render plate
+    function renderPlate(idx){
+      plateContainer.innerHTML = '';
+      const img = imageCache[idx] ? imageCache[idx].cloneNode() : null;
+      if(img){ img.alt = `Ishihara plate ${idx+1}`; plateContainer.appendChild(img); }
+      else{
+        const note = document.createElement('div'); note.style.color='#475569'; note.style.textAlign='center'; note.style.padding='20px'; note.innerHTML = '<div style="font-size:22px">Image failed to load</div><div style="margin-top:6px;color:#94a3b8">Plate image unavailable</div>'; plateContainer.appendChild(note);
+      }
+
+      // update UI
+      currentPlateSpan.textContent = idx+1;
+      progressBar.style.width = ((idx+1)/24*100) + '%';
+
+      // options
+      optionsHolder.innerHTML = '';
+      const opts = buildOptionsFor(idx);
+      opts.forEach(opt => {
+        const b = document.createElement('button'); b.className='opt'; b.textContent = opt; b.setAttribute('data-val',opt);
+        if(answers[idx] === opt) b.classList.add('selected');
+        b.onclick = () => selectOption(opt, b);
+        optionsHolder.appendChild(b);
+      });
+
+      // show/hide buttons
+      nextBtn.style.display = (idx < 23) ? 'inline-block':'none';
+      finishBtn.style.display = (idx === 23 && answers[23]) ? 'inline-block':'none';
+      retakeBtn.style.display = 'none';
+      downloadBtn.style.display = 'none';
+      shareBtn.style.display = 'none';
+
+      renderAnswersList();
+    }
+
+    function selectOption(value, buttonEl){
+      const idx = current;
+      answers[idx] = value;
+      // Update selection style
+      document.querySelectorAll('.opt').forEach(el=>el.classList.remove('selected'));
+      buttonEl.classList.add('selected');
+      // Show finish if last
+      if(idx === 23) { finishBtn.style.display = 'inline-block'; }
+      updateAnswersListItem(idx);
+    }
+
+    function renderAnswersList(){
+      answersList.innerHTML = '';
+      for(let i=0;i<24;i++){
+        const row = document.createElement('div'); row.style.display='flex'; row.style.justifyContent='space-between'; row.style.padding='8px 6px'; row.style.borderBottom='1px dashed #eef3fb';
+        const left = document.createElement('div'); left.style.color='#0b4aa6'; left.style.fontWeight=700; left.textContent = `Plate ${i+1}`;
+        const right = document.createElement('div'); right.style.color = answers[i] ? '#0b4aa6' : '#94a3b8'; right.textContent = answers[i] ? answers[i] : '—';
+        row.appendChild(left); row.appendChild(right);
+        row.onclick = () => { current = i; renderPlate(current); window.scrollTo({top:0,behavior:'smooth'}); };
+        answersList.appendChild(row);
+      }
+    }
+
+    function updateAnswersListItem(i){
+      const row = answersList.children[i]; if(!row) return; row.children[1].textContent = answers[i] ? answers[i] : '—'; row.children[1].style.color = answers[i] ? '#0b4aa6' : '#94a3b8';
+    }
+
+    // Start test
+    startBtn.addEventListener('click', async ()=>{
+      startBtn.disabled = true; startBtn.textContent = 'Preparing...';
+      await ensurePreloaded();
+      // start from first
+      current = 0; answers = new Array(24).fill(null);
+      renderPlate(current);
+      startBtn.style.display='none'; nextBtn.style.display='inline-block';
+    });
+
+    async function ensurePreloaded(){
+      if(loadedCount >= plates.length) return Promise.resolve();
+      await preloadAll();
+      // remove loading and append actual image
+      if(loadingHolder) loadingHolder.remove();
+    }
+
+    nextBtn.addEventListener('click', ()=>{
+      if(current < 23) current++; renderPlate(current);
+    });
+
+    finishBtn.addEventListener('click', ()=>{
+      finishTest();
+    });
+
+    retakeBtn.addEventListener('click', ()=>{
+      answers = new Array(24).fill(null); current=0; renderPlate(current); startBtn.style.display='none'; nextBtn.style.display='inline-block'; retakeBtn.style.display='none';
+    });
+
+    // Keyboard support 1-4 map to options order
+    window.addEventListener('keydown', (e)=>{
+      if(document.activeElement && (document.activeElement.tagName==='INPUT' || document.activeElement.tagName==='TEXTAREA')) return;
+      if(e.key >= '1' && e.key <= '4'){
+        const idx = parseInt(e.key,10)-1; const opt = document.querySelectorAll('.opt')[idx]; if(opt) opt.click();
+      }
+      if(e.key === 'ArrowRight') { if(nextBtn.style.display!=='none') nextBtn.click(); }
+      if(e.key === 'Enter') { if(finishBtn.style.display!=='none') finishBtn.click(); }
+    });
+
+    function finishTest(){
+      // compute correct answers count where plate.correct is provided
+      let correct=0; let totalKnown=0;
+      for(let i=0;i<plates.length;i++){
+        const correctAns = plates[i].correct === '' ? 'Nothing' : plates[i].correct;
+        if(plates[i].correct !== '') totalKnown++;
+        if(answers[i] === correctAns) correct++;
+      }
+      const percentage = Math.round((correct / 24) * 100);
+      let diagnosis = 'Normal Color Vision';
+      if(percentage < 70) diagnosis = 'Possible Color Vision Deficiency';
+      else if(percentage < 85) diagnosis = 'Mild Color Vision Issues';
+
+      // Show modal-like result
+      const modalHtml = `\n        <div style="padding:18px;max-width:620px">\n          <h2 style=\"color:#07366b\">🎨 Test Results</h2>\n          <div style=\"background:#f0f9ff;padding:14px;border-radius:8px;margin-top:12px\">\n            <div style=\"font-size:28px;color:#0b7a4a;font-weight:800\">${percentage}%</div>\n            <div style=\"margin-top:8px\">Score: <strong>${correct}/24</strong></div>\n            <div style=\"margin-top:8px\">Diagnosis: <strong>${diagnosis}</strong></div>\n          </div>\n          <div style=\"margin-top:12px;display:flex;gap:10px\">\n            <button id=\"_close\" class=\"btn\">Close</button>\n            <button id=\"_download\" class=\"btn\">📄 Download Report</button>\n            <button id=\"_retake\" class=\"btn ghost\">🔄 Retake</button>\n          </div>\n          <div style=\"margin-top:12px;color:#475569;font-size:13px\">Note: This is a screening test. For clinical diagnosis consult an optometrist.</div>\n        </div>\n      `;
+
+      const overlay = document.createElement('div'); overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,0.5);display:flex;align-items:center;justify-content:center;z-index:9999';
+      const card = document.createElement('div'); card.style.cssText='background:white;border-radius:10px;padding:18px;max-width:680px;width:94%;box-shadow:0 12px 40px rgba(2,6,23,0.4)';
+      card.innerHTML = modalHtml;
+      overlay.appendChild(card); document.body.appendChild(overlay);
+
+      document.getElementById('_close').onclick = ()=>{ overlay.remove(); };
+      document.getElementById('_retake').onclick = ()=>{ overlay.remove(); retakeBtn.click(); };
+      document.getElementById('_download').onclick = ()=>{ downloadReport(percentage, correct, diagnosis); };
+
+      // Show download/share buttons in main UI
+      downloadBtn.style.display = 'inline-block'; shareBtn.style.display = 'inline-block';
+      retakeBtn.style.display = 'inline-block'; nextBtn.style.display='none'; finishBtn.style.display='none'; startBtn.style.display='none';
+  // Show save button if authenticated
+  ensureAuthUI();
+
+      // Store result in data-attr for share/download
+      overlay.dataset.result = JSON.stringify({percentage,correct,diagnosis,answers});
+    }
+
+    function downloadReport(percentage, correct, diagnosis){
+      const when = new Date().toLocaleString();
+      const body = `VisionBharatSphere - Ishihara Color Vision Test\nDate: ${when}\nResult: ${percentage}%\nScore: ${correct}/24\nDiagnosis: ${diagnosis}\n\nAnswers:\n${answers.map((a,i)=>`Plate ${i+1}: ${a? a: '—'}`).join('\n')}`;
+      const blob = new Blob([body],{type:'text/plain'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download = `ishihara_report_${new Date().toISOString().slice(0,10)}.txt`; a.click(); URL.revokeObjectURL(url);
+    }
+
+    // wire download & share
+    downloadBtn.addEventListener('click', ()=>{
+      // if modal still open, it passes args; else recalc
+      let correct=0; for(let i=0;i<24;i++){ const ca = plates[i].correct === '' ? 'Nothing' : plates[i].correct; if(answers[i]===ca) correct++; }
+      const percent = Math.round((correct/24)*100); const diag = percent<70 ? 'Possible Color Vision Deficiency' : percent<85 ? 'Mild Color Vision Issues' : 'Normal Color Vision';
+      downloadReport(percent, correct, diag);
+    });
+
+    shareBtn.addEventListener('click', ()=>{
+      // simple copy to clipboard
+      let correct=0; for(let i=0;i<24;i++){ const ca = plates[i].correct === '' ? 'Nothing' : plates[i].correct; if(answers[i]===ca) correct++; }
+      const percent = Math.round((correct/24)*100);
+      const text = `I completed VisionBharatSphere Ishihara test - Score: ${percent}% (${correct}/24)`;
+      navigator.clipboard.writeText(text).then(()=> alert('Result copied to clipboard!'));
+    });
+
+    // --- Authentication & backend submit ---
+    // Simple auth using the backend endpoints (assumes backend running at http://localhost:8000)
+    const API_BASE = window.API_BASE || 'http://127.0.0.1:8000';
+    function setToken(token, uid){
+      if(token){ localStorage.setItem('vbs_token', token); localStorage.setItem('vbs_user', uid || ''); }
+      else { localStorage.removeItem('vbs_token'); localStorage.removeItem('vbs_user'); }
+      ensureAuthUI();
+    }
+
+    function getToken(){ return localStorage.getItem('vbs_token'); }
+
+    function ensureAuthUI(){
+      const t = getToken();
+      if(t){ logoutBtn.style.display='inline-block'; loginBtn.style.display='none'; registerBtn.style.display='none'; userBadge.style.display='inline-block';
+        const em = localStorage.getItem('vbs_email'); userBadge.textContent = em ? em : 'Signed In';
+        // show save button
+        downloadBtn.textContent = 'Save & Download';
+      } else { logoutBtn.style.display='none'; loginBtn.style.display='inline-block'; registerBtn.style.display='inline-block'; userBadge.style.display='none'; downloadBtn.textContent='📄 Download Report'; }
+    }
+
+    // show modals
+    loginBtn.addEventListener('click', ()=>{ document.getElementById('loginModal').style.display='flex'; });
+    registerBtn.addEventListener('click', ()=>{ document.getElementById('registerModal').style.display='flex'; });
+    logoutBtn.addEventListener('click', ()=>{ setToken(null); alert('Logged out'); });
+
+    function hideLogin(){ document.getElementById('loginModal').style.display='none'; }
+    function hideRegister(){ document.getElementById('registerModal').style.display='none'; }
+
+    // login form submit
+    document.getElementById('loginForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      fetch(API_BASE + '/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email,password})}).then(async r=>{
+        if(!r.ok){ const txt = await r.text(); throw new Error(txt || 'Login failed'); }
+        return r.json();
+      }).then(j=>{
+        if(j.access_token){ setToken(j.access_token, j.user_id || ''); localStorage.setItem('vbs_email', email); hideLogin(); alert('Login successful'); } else { alert('Login failed'); }
+      }).catch(e=>{ alert('Login error: '+e.message); });
+    });
+
+    // register form submit
+    document.getElementById('registerForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      const email = document.getElementById('regEmail').value;
+      const name = document.getElementById('regName').value;
+      const password = document.getElementById('regPassword').value;
+      fetch(API_BASE + '/auth/register',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email,full_name:name,password})}).then(async r=>{
+        if(!r.ok){ const txt = await r.text(); throw new Error(txt || 'Register failed'); }
+        return r.json();
+      }).then(j=>{ if(j.id){ hideRegister(); alert('Registered — now login'); } else alert('Register failed'); }).catch(e=>alert('Register error: '+e.message));
+    });
+
+    // Save to backend then download
+    downloadBtn.addEventListener('click', ()=>{
+      const token = getToken();
+      let correct=0; for(let i=0;i<24;i++){ const ca = plates[i].correct === '' ? 'Nothing' : plates[i].correct; if(answers[i]===ca) correct++; }
+      const percent = Math.round((correct/24)*100);
+      const diag = percent<70 ? 'Possible Color Vision Deficiency' : percent<85 ? 'Mild Color Vision Issues' : 'Normal Color Vision';
+      const payload = { score: correct, percentage: percent, diagnosis: diag, answers };
+      if(token){
+        fetch(API_BASE + '/tests', {method:'POST', headers:{'content-type':'application/json','authorization':'Bearer '+token}, body:JSON.stringify(payload)}).then(r=>r.json()).then(res=>{
+          // then download as before
+          downloadReport(percent, correct, diag);
+          alert('Test saved to your account');
+        }).catch(e=>{ alert('Save failed: '+e); downloadReport(percent, correct, diag); });
+      } else {
+        // just download
+        downloadReport(percent, correct, diag);
+      }
+    });
+
+    ensureAuthUI();
+
+    // On load: preload and keep loading indicator
+    (async ()=>{
+      await preloadAll();
+      // replace loading text
+      if(loadingHolder){ loadingHolder.remove(); }
+      // show initial placeholder (first plate thumbnail) but not start yet
+      const placeholder = document.createElement('div'); placeholder.style.textAlign='center'; placeholder.style.color='#94a3b8'; placeholder.innerHTML = 'Press "Start Test" to begin'; plateContainer.appendChild(placeholder);
+      startBtn.disabled = false; startBtn.textContent = '🎨 Start Test';
+    })();
+
+  </script>
+</body>
+</html>
